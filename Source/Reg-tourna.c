@@ -40,13 +40,32 @@ for more information contact us at:
  ===============================================================================*/
 /*Header files required for program*/
 
-#include<math.h>
-#include<stdio.h>
-#include<conio.h>
-#include<graphics.h>
-#include<stdlib.h>
-#include<dos.h>
-#include<string.h>
+#include "optimized_structures.h"
+#include "globals.h"
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "graphics.h"
+
+#ifdef _WIN32
+#include <conio.h>
+#include <dos.h>
+#else
+// For non-Windows platforms, we'll need to implement these functions
+// or use alternative libraries
+#define YELLOW 14
+#define LIGHTBLUE 9
+#define WHITE 15
+#define HORIZ_DIR 0
+#define SOLID_FILL 1
+#define BLUE 1
+#define RED 4
+#define LIGHTGRAY 7
+#define BLINK 128
+#define DETECT 0
+#endif
+
 /*======================================================================*
  CONSTANT VARIABLES
  inmax=maximum no of items allowed;
@@ -84,7 +103,7 @@ for more information contact us at:
   STRING
 	fname=stores filename
 ===========================================================================*/
-int isbest=0,q,maxgen,in,leng,*arr,*ar1,arr1[popsize],count,genc,Lx=0,Ly=0,ymax,xmax;
+int isbest=0,q,maxgen,in,*arr,*ar1,arr1[popsize],count,genc,Lx=0,Ly=0,ymax,xmax;
 int fla=0,fla1=0,popcount,tot_crossovers=0,tot_mutations=0;
 float pcross,pmute,x_scale,y_scale;
 char fname[200];
@@ -215,12 +234,12 @@ void genetic();
 
 int ifflip(float);
 void seqgenr(int);
-void givesign();
+void givesign(int);
 
 void roul();
 void tour_select();
 
-void crosser();
+void crosser(int mate1, int mate2);
 
 float area_occupied();
 
@@ -272,7 +291,7 @@ int ifflip(float pcr)
   int r,k;
   float rr;
 
-  r=random(1000);
+  r=custom_random(1000);
   rr=r/1000.0;
 
   if(rr<pcr) {
@@ -303,11 +322,11 @@ void seqgenr(int maxno)
 		       }
 
   for(i=0;i<maxno;)    {
-			k=random(maxno);
+			k=custom_random(maxno);
 			if(ar1[k]==0) {
 					 arr[i]=k;
 					 ar1[k]=1;
-					 givesign();
+					 givesign(i);
 					 i++;
 				       }
 			}
@@ -345,7 +364,7 @@ void seqgen(int maxno)
    ar1[i]=0;
 
   for(i=0;i<maxno;)  {
-		       k=random(maxno);
+		       k=custom_random(maxno);
 
 		       if(ar1[k]==0)    {
 					  arr1[i]=k;
@@ -373,7 +392,6 @@ void givesign(int i)
   if(r==1) {
 	    arr[i]=arr[i]*(-1);
 	   }
-
  }
 
 
@@ -399,11 +417,11 @@ int input1()
   sprintf(str,"Enter name of input data file:");
   outtextxy(20,260,str);
   gotoxy(35,17);
-  scanf("%s",&a);
+  scanf("%s", a);
 
   infp=fopen(a,"r");
 
-  fscanf(infp,"%s",&valid1);
+  fscanf(infp,"%s", valid1);
 
   v_flag=strcmp(valid,valid1);
   if(v_flag!=0)
@@ -418,7 +436,7 @@ int input1()
     sprintf(str,"Enter name of result file:");
     outtextxy(20,275,str);
     gotoxy(35,18);
-    scanf("%s",&b);
+    scanf("%s", b);
 
     rfp=fopen(b,"w");
 
@@ -433,8 +451,8 @@ int input1()
     arr=(int *)malloc(in*sizeof(int));
     ar1=(int *)malloc(in*sizeof(int));
 
-    fscanf(infp,"%d",&leng);
-    fprintf(rfp,"\nSize of base rectangle=%d\n",leng);
+    fscanf(infp,"%f",&leng);
+    fprintf(rfp,"\nSize of base rectangle=%f\n",leng);
 
     /*memory allocation for pivots*/
     p=(struct pivot*)malloc((2*in+2*leng)*(sizeof(struct pivot)));
@@ -455,7 +473,7 @@ int input1()
    sprintf(str,"Enter name of lisp file:");
    outtextxy(20,292,str);
    gotoxy(35,19);
-   scanf("%s",&fname);
+   scanf("%s", fname);
 
    sprintf(str,"Enter probability of crossover:(0-1)=");
    outtextxy(20,308,str);
@@ -701,7 +719,7 @@ Input: Number of parent chromosomes.
 Returns:Nothing, but crates child chormosomes which are globally
 	declared.
 ====================================================================*/
-void crosser(int mate1,int mate2)
+void crosser(int mate1, int mate2)
 {
   int i,j,l,p,k,t,qlim,jcross;
 
@@ -713,7 +731,7 @@ void crosser(int mate1,int mate2)
 
   p=p+1;
   qlim=in+1-p;
-  q=random(qlim);   /*q is the crossover site */
+  q=custom_random(qlim);   /*q is the crossover site */
   q=q+1;
 
   t=q;
@@ -830,7 +848,7 @@ void roul()
       generation.a[i]=generation.scalfit[i]/avgfit;
       generation.b[i]=generation.a[i]/popsize;
       generation.c[i]=generation.c[i-1]+generation.b[i];
-      k=random(10000);
+      k=custom_random(10000);
       generation.d[i]=k/10000;
      }
 
@@ -1031,100 +1049,490 @@ Description:Genetic run. Calls various functions to carry out genetic
 ====================================================================*/
 void genetic()
  {
-  int i,v_flag;
-  char chk[80],cho;
+  int i, v_flag;
+  char chk[80], cho;
   char str[200];
-  float area,waste,ut;
+  float area, waste, ut;
 
-  genc=0;
+  genc = 0;
+  v_flag = input1();
 
-  v_flag=input1();
+  if(v_flag == 0) {
+    // generations begin
+    for(genc = 0; genc < maxgen; genc++) {
+      setcolor(YELLOW);
+      sprintf(str, "%.0f percent complete", ((float)genc/maxgen)*100.0);
+      outtextxy(400, 360, str);
 
-  if(v_flag==0)
-
-  {
-   initialize();
-
-  /*generations begin*/
-   for(genc=0;genc<maxgen;genc++)
-    {
-     setcolor(YELLOW);
-     sprintf(str,"%.0f percent complete",((float)genc/maxgen)*100.0);
-     outtextxy(400,360,str);
-
-     /*to get packing height and fitness function*/
       decode();
-
-     /*finds the bestever solution*/
       best();
-
-     /*Selection/reproduction operator */
       selection();
-
-      /*crossover on the chromosomes with a certain probability*/
       crossover();
-
-      /*mutation operator - changing rotation with certain probability*/
       mutation();
 
-      for(i=0;i<popsize;i++) /*copies new population  to old population*/
-       {
-	oldpop[i]=newpop[i];
-	oldpop[i].is_crossed=0;
-	generation.stringno[i]=0;
-	generation.height[i]=0;
-	generation.a[i]=0;
-	generation.b[i]=0;
-	generation.c[i]=0;
-	generation.d[i]=0;
-	generation.fitness[i]=0;
-	generation.choostr[i]=0;
-       }
+      for(i = 0; i < popsize; i++) {
+        oldpop[i] = newpop[i];
+      }
 
-     setcolor(LIGHTBLUE);
-     sprintf(str,"%.0f percent complete",((float)genc/maxgen)*100.0);
-     outtextxy(400,360,str);
-
+      setcolor(LIGHTBLUE);
+      sprintf(str, "%.0f percent complete", ((float)genc/maxgen)*100.0);
+      outtextxy(400, 360, str);
     }
 
-   fprintf(rfp,"\nPacking height = %f",bestever.packht);
+    // Output results
+    fprintf(rfp, "\nPacking height = %f", bestever.packht);
 
-   area=waste=0.0;
-   area=(float)bestever.packht*leng;
-   waste=(float)(area-area_occupied());
+    area = waste = 0.0;
+    area = (float)bestever.packht * leng;
+    waste = (float)(area - area_occupied());
 
-   fprintf(rfp,"\n\nArea wasted= %.4f",waste);
-   fprintf(rfp,"\n\n Area wasted= %f \%",((float)waste/area)*100.0);
+    fprintf(rfp, "\n\nArea wasted= %.4f", waste);
+    fprintf(rfp, "\n\n Area wasted= %f \%", ((float)waste/area)*100.0);
 
-   ut=(float)area_occupied()/area;
-   fprintf(rfp,"\n\n Utilization Factor= %f",ut);
+    ut = (float)area_occupied()/area;
+    fprintf(rfp, "\n\n Utilization Factor= %f", ut);
 
-   fclose(rfp);
+    fclose(rfp);
 
-   setcolor(LIGHTBLUE);
-   outtextxy(20,360,"Processing data : wait");
-   setcolor(YELLOW);
-   outtextxy(20,360,"Processing data complete: Press any key to continue");
+    setcolor(LIGHTBLUE);
+    outtextxy(20, 360, "Processing data : wait");
+    setcolor(YELLOW);
+    outtextxy(20, 360, "Processing data complete: Press any key to continue");
 
-   getch();
+    getch();
 
-   outtextxy(20,370,"Do you want to see output(y/n)?");
-   gotoxy(40,24);
+    outtextxy(20, 370, "Do you want to see output(y/n)?");
+    gotoxy(40, 24);
 
-   cho=getch();
-   if(cho=='y'||cho=='Y')
-    {
-     final_op();
+    cho = getch();
+    if(cho == 'y' || cho == 'Y') {
+      final_op();
     }
   }
+}
+
+/*====================================================================
+float place_sort()
+Description:Placement of parts on actual screen.
+
+Returns:Packing height
+====================================================================*/
+float place_sort()
+ {
+  int k=0,is,pflag,Lx1,Ly1;
+  float ht=0.0,t;
+  char str[30];
+  char lsp[200];
+
+  x_scale=(float)leng/scale;
+  y_scale=(float)leng/scale;
+  Lx1=getmaxx()/2-(scale/2);
+  Ly1=getmaxy()/2-(scale/2);
+  f=fopen(fname,"w");
+  fprintf(f,"(defun c:go()");
+  setfillstyle(SOLID_FILL,BLUE);
+  bar(Lx1-3,25,Lx1,ymax-Ly1);
+  bar(Lx1-3,ymax-Ly1+3,Lx1+scale+3,ymax-Ly1);
+  bar(Lx1+scale,ymax-Ly1,Lx1+scale+3,25);
+
+  for(is=0;((is<in)&&(sor[is].flag==0));is++)
+	 {
+
+	  if(sor[is].rot==1)
+	    {
+		t=sor[is].len;
+		sor[is].len=sor[is].wid;
+		sor[is].wid=t;
+	    }
+
+	  if(k==-1)
+	    {
+		is--;
+		sprintf(str,"break at %d",is);
+		outtextxy(15,15,str);
+		break;
+	    }
+
+	  k=choosepivot(is);
+
+	  p[k].isalive=1;
+
+	  setcolor(RED);
+
+	  if(sor[is].irr==0)
+		{
+		 recta1(chosen.sx,chosen.sy,chosen.sx+sor[is].len,chosen.sy+sor[is].wid,is);
+		 recta(chosen.sx,chosen.sy,chosen.sx+sor[is].len,chosen.sy+sor[is].wid);
+		}
+
+	  p[k].pfor=is;
+
+	  if(ht<(chosen.sy+sor[is].wid-Ly))
+		 ht=chosen.sy+sor[is].wid-Ly;
+
+	  if(p[k].which==0)
+		{
+		 if(sor[p[k].parent].wid>sor[is].wid)
+		 pflag=0;
+		 if(sor[p[k].parent].wid==sor[is].wid)
+		 pflag=1;
+		 if(sor[p[k].parent].wid<sor[is].wid)
+		 pflag=2;
+		}
+
+	  if(p[k].which==1)
+	   {
+	       if((sor[p[k].parent].len>sor[is].len)||(sor[p[k].parent].len<sor[is].len))
+		pflag=3;
+	       if(sor[p[k].parent].len==sor[is].len)
+		pflag=4;
+	   }
+
+	  if(p[k].which==2)
+	  {
+	    pflag=5;
+
+	  }
+
+	  pivot_status(pflag,k,is);
+
+	  sor[is].flag=1;
+
+	}
+
+   sprintf(lsp,"(command \"rectangle\" (list %f %f) (list %f %f))",0.0,0.0,leng,leng);
+   fputs(lsp,f);
+   fprintf(f,"(command \"zoom\" \"e\" )");
+   fputs(")",f);
+   fclose(f);
+
+   return ht;
+
  }
 
+/*====================================================================
+void load()
+Description:Reads input data file for heuristic
+Returns:Flag showing validty of input file.
+====================================================================*/
+int load()
+{
+  int i=0,choice,v_flag;
+  char a[200];
+  char str[200];
+  char *valid="GENPACK1";
+  char valid1[10];
 
-/*BOTTOMLEFT-FILL ALGORITHM BEGINS HERE*/
+  sprintf(str,"Enter name of input data file:");
+  outtextxy(20,260,str);
+  gotoxy(35,17);
+  scanf("%s", a);
+
+  infp=fopen(a,"r");
+
+  fscanf(infp,"%s", valid1);
+  v_flag=strcmp(valid,valid1);
+  if(v_flag!=0)
+   {
+    fclose(infp);
+    outtextxy(20,270,"Invalid Input File Format");
+    printf("\a");
+    getch();
+   }
+  else
+  {
+   fscanf(infp,"%d",&in);
+
+   /*memory allocation*/
+   rr=(struct rect*)malloc(in*sizeof(struct rect));
+   sor=(struct rect*)malloc(in*sizeof(struct rect));
+   arr=(int *)malloc(in*sizeof(int));
+   ar1=(int *)malloc(in*sizeof(int));
+
+   fscanf(infp,"%f",&leng);
+   /*memory allocation for pivots*/
+   p=(struct pivot*)malloc((2*in+1.5*leng)*(sizeof(struct pivot)));
+
+   for(i=0;i<in;i++)
+	{
+			 fscanf(infp,"%f",&rr[i].len);
+			 fscanf(infp,"%f",&rr[i].wid);
+			 rr[i].flag=0;
+			 rr[i].rot=0;
+			 rr[i].irr=0;
+			 rr[i].number=i;
+
+	}
+
+   sprintf(str,"Enter name of lisp file:");
+   outtextxy(20,292,str);
+   gotoxy(35,19);
+   scanf("%s", fname);
+   fclose(infp);
+   }
+
+  return v_flag;
+ }
+
+/*====================================================================
+void sorting()
+Description:Sorting solution output screen.
+====================================================================*/
+void sorting()
+{
+  char str[200];
+  char ch;
+  int i,flag_sort=0;
+  float height1=0.0;
+
+  Lx=(getmaxx()/2)-leng/2;
+  Ly=(getmaxy()/2)-leng/2;
+
+  do
+   {
+    cleardevice();
+    flag_sort=0;
+    ch=sort_menu();
+    if(ch==27)
+     break;
+    cleardevice();
+
+    switch(ch)
+	{
+	 case '1':
+		     sortlen();
+		     sprintf(str,"Solution by Length Sort");
+		     break;
+
+	 case '2':
+		     sortwid();
+		     sprintf(str,"Solution by Width Sort" );
+		     break;
+
+	 case '3':
+		     sortarea();
+		     sprintf(str,"Solution by Area Sort");
+		     break;
+
+	 case '4':
+		     sortper();
+		     sprintf(str,"Solution by Perimeter Sort");
+		     break;
+
+	 default:
+		     sprintf(str,"Invalid Selection");
+		     flag_sort=1;
+		     break;
+
+       }
+
+   if(flag_sort==0)
+     {
+      setbkcolor(LIGHTBLUE);
+
+      setcolor(WHITE);
+      outtextxy(0,10,str);
+      sprintf(str,"Press any key to return to sort menu");
+      outtextxy(0,450,str);
+
+      inplace();
+      height1=place_sort();
+
+      setcolor(YELLOW);
+      sprintf(str," Packing height = %.2f",height1);
+      outtextxy(400,20,str);
+      setcolor(WHITE);
+
+      getch();
+      cleardevice();
+     }
+   }while(ch!=27);
+ }
+
+/*====================================================================
+void input()
+Description:Creates Data input file.
+====================================================================*/
+void input()
+ {
+  int leng,i,j,in,choice,no_sides;
+  float len,wid;
+  char b[200];
+
+  system("clear");
+
+  printf("Enter file name: ");
+  scanf("%199s", b);
+  fp=fopen(b,"w");
+
+  fprintf(fp,"GENPACK1 ");
+  printf("\nEnter number of items: ");
+  scanf("%d",&in);
+  fprintf(fp,"%d ",in);
+
+  printf("\nEnter length of base rectangle: ");
+  scanf("%f",&leng);
+  fprintf(fp,"%f ",leng);
+
+  for(i=0;i<in;i++)
+    {
+      printf("\nEnter length and width of rectangle '%d': ",i+1);
+      scanf("%f %f",&len,&wid);
+      fprintf(fp,"%f %f ",len,wid);
+    }
+
+  fclose(fp);
+}
+
+/*====================================================================
+char sort_menu()
+Description:Shows option screen of heuristic solutions.
+Returns:Selected item number.
+====================================================================*/
+char sort_menu()
+ {
+  char str[200];
+  int i;
+
+  setbkcolor(LIGHTBLUE);
+  setcolor(BLUE);
+
+  for(i=0;i<5;i++)
+    rectangle(i,i,getmaxx()-i,getmaxy()-i);
+
+  setcolor(LIGHTGRAY);
+
+  for(i=0;i<5;i++)
+    rectangle(i+5,i+5,(getmaxx()-(i+5)),(getmaxy()-(i+5)));
+
+  setcolor(WHITE);
+  outtextxy(310,40,"GENPACK");
+
+  outtextxy(10,400,"Press esc to Exit");
+  sprintf(str,"1 : Generate Solution by Length Sort.");
+  outtextxy(20,70,str);
+  sprintf(str,"2 : Generate Solution by Width Sort.");
+  outtextxy(20,90,str);
+  sprintf(str,"3 : Generate Solution by Area Sort.");
+  outtextxy(20,110,str);
+  sprintf(str,"4 : Generate Solution by Perimeter Sort.");
+  outtextxy(20,130,str);
+  outtextxy(20,160,"Choose your option:");
+  return getch();
+ }
+
+/*====================================================================
+void option_screen()
+Description:Shows option screen.
+====================================================================*/
+void option_screen()
+ {
+  char str[200];
+  int i;
+
+  setcolor(BLINK);
+
+  for(i=0;i<5;i++)
+     rectangle(i,i,getmaxx()-i,getmaxy()-i);
+
+  setcolor(LIGHTGRAY);
+
+  for(i=0;i<5;i++)
+    rectangle(i+5,i+5,(getmaxx()-(i+5)),(getmaxy()-(i+5)));
+
+  setcolor(WHITE);
+  outtextxy(310,40,"GENPACK");
+  outtextxy(68,60,"OPTIMAL NESTING OF TWO DIMENSIONAL PARTS USING GENETIC ALGORITHMS");
+  outtextxy(30,400,"Press esc to Exit");
+  sprintf(str,"1 : Create Data file for input.");
+  outtextxy(30,120,str);
+  sprintf(str,"2 : Generate Solution by Heuristic Methods.");
+  outtextxy(30,140,str);
+  sprintf(str,"3 : Generate Solution by Genetic Approach.");
+  outtextxy(30,160,str);
+  outtextxy(30,180,"Choose your option:");
+ }
+
+/*====================================================================
+void main()
+Description:Main function.Calls other subroutines.
+====================================================================*/
+int main()
+ {
+  int gd=DETECT,gm,choice,i;
+  char ch;
+  char str[200];
+
+  initgraph(&gd,&gm,"");
+  ymax=getmaxy();
+  xmax=getmaxx();
+  ch='2';
+
+  do
+   {
+    setbkcolor(LIGHTBLUE);
+    option_screen();
+    setcolor(WHITE);
+    ch=getch();
+
+    if(ch==27)
+     exit(0);
+
+    switch(ch) {
+
+       case '1':
+		closegraph();
+		input();
+		initgraph(&gd,&gm,"");
+		break;
+
+       case '2':
+		outtextxy(220,180,"2");
+		if(load()==0)
+		 sorting();
+		free(rr);
+		free(sor);
+		free(ar1);
+		free(p);
+		break;
+
+	case '3':
+		 outtextxy(220,180,"3");
+		 tot_crossovers=0;
+		 tot_mutations=0;
+		 genetic();
+		 free(rr);
+		 free(sor);
+		 free(ar1);
+		 free(p);
+		 break;
+
+	default:
+		 setcolor(RED);
+		 sprintf(str,"Invalid Selection");
+		 printf("\a");
+		 outtextxy(40,440,str);
+		 getch();
+
+		}
+
+     setcolor(LIGHTBLUE);
+     sprintf(str,"Invalid Selection");
+     outtextxy(40,400,str);
+
+     cleardevice();
+
+    }while(ch!=27);
+
+ getch();
+
+ closegraph();
+ return 0;
+}
+
 /*====================================================================
 void inplace()
 Description:Makes left side of base rectangle with all points as pivots
-
 ====================================================================*/
 void inplace()
  {
@@ -1395,250 +1803,248 @@ void pivot_status(int pflag,int p_pos,int re_pos)
   switch(pflag)
      {
       case 0:
-	     p[count].sx=p[p_pos].sx+sor[re_pos].len;
-	     p[count].sy=p[p_pos].sy;
-	     p[count].parent=re_pos;
-	     p[count].isalive=0;
-	     p[count].avalx=p[p_pos].avalx-sor[re_pos].len;
-	     p[count].avaly=p[p_pos].avaly;
-	     p[count].which=0;
+	    p[count].sx=p[p_pos].sx+sor[re_pos].len;
+	    p[count].sy=p[p_pos].sy;
+	    p[count].parent=re_pos;
+	    p[count].isalive=0;
+	    p[count].avalx=p[p_pos].avalx-sor[re_pos].len;
+	    p[count].avaly=p[p_pos].avaly;
+	    p[count].which=0;
 
-	     if(p[p_pos].ischeckx==1)
-	       p[count].ischeckx=1;
-	     else
-	       p[count].ischeckx=0;
-
-	     if(p[p_pos].ischecky==1)
-	       p[count].ischecky=1;
-	     else
-	       p[count].ischecky=0;
-
-	     checky(re_pos);
-
-	     count++;
-
-	     p[count].sx=p[p_pos].sx;
-	     p[count].sy=p[p_pos].sy+sor[re_pos].wid;
-	     p[count].parent=re_pos;
-	     p[count].avalx=p[p_pos].avalx;
-	     p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
-	     p[count].isalive=0;
-
-	     if(p[p_pos].ischeckx==1)
+	    if(p[p_pos].ischeckx==1)
 	      p[count].ischeckx=1;
-	     else
+	    else
 	      p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
+	    if(p[p_pos].ischecky==1)
 	      p[count].ischecky=1;
-	     else
+	    else
 	      p[count].ischecky=0;
 
-	     p[count].which=1;
+	    checky(re_pos);
 
-	     count++;
+	    count++;
 
-	     break;
+	    p[count].sx=p[p_pos].sx;
+	    p[count].sy=p[p_pos].sy+sor[re_pos].wid;
+	    p[count].parent=re_pos;
+	    p[count].avalx=p[p_pos].avalx;
+	    p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
+	    p[count].isalive=0;
+
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
+
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
+
+	    p[count].which=1;
+
+	    break;
 
       case 1:
-	     p[count].sx=p[p_pos].sx+sor[re_pos].len;
-	     p[count].sy=p[p_pos].sy;
-	     p[count].parent=re_pos;
-	     p[count].isalive=0;
-	     p[count].avalx=p[p_pos].avalx-sor[re_pos].len;
-	     p[count].avaly=p[p_pos].avaly;
-	     p[count].which=0;
+	    p[count].sx=p[p_pos].sx+sor[re_pos].len;
+	    p[count].sy=p[p_pos].sy;
+	    p[count].parent=re_pos;
+	    p[count].isalive=0;
+	    p[count].avalx=p[p_pos].avalx-sor[re_pos].len;
+	    p[count].avaly=p[p_pos].avaly;
+	    p[count].which=0;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checky(re_pos);
+	    checky(re_pos);
 
-	     count++;
+	    count++;
 
-	     break;
+	    break;
 
       case 2:
-	     p[count].sx=p[p_pos].sx+sor[re_pos].len;
-	     p[count].sy=p[p_pos].sy;
-	     p[count].parent=re_pos;
-	     p[count].isalive=0;
-	     p[count].avalx=p[p_pos].avalx-sor[re_pos].len;
-	     p[count].avaly=p[p_pos].avaly;
-	     p[count].which=0;
+	    p[count].sx=p[p_pos].sx+sor[re_pos].len;
+	    p[count].sy=p[p_pos].sy;
+	    p[count].parent=re_pos;
+	    p[count].isalive=0;
+	    p[count].avalx=p[p_pos].avalx-sor[re_pos].len;
+	    p[count].avaly=p[p_pos].avaly;
+	    p[count].which=0;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checky(re_pos);
+	    checky(re_pos);
 
-	     count++;
+	    count++;
 
-	     p[count].sx=p[p_pos].sx;
-	     p[count].sy=p[p_pos].sy+sor[re_pos].wid;
-	     p[count].parent=re_pos;
-	     p[count].avalx=p[p_pos].avalx;
-	     p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
-	     p[count].isalive=0;
+	    p[count].sx=p[p_pos].sx;
+	    p[count].sy=p[p_pos].sy+sor[re_pos].wid;
+	    p[count].parent=re_pos;
+	    p[count].avalx=p[p_pos].avalx;
+	    p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
+	    p[count].isalive=0;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     p[count].which=1;
+	    p[count].which=1;
 
-	     checkx(re_pos);
+	    checkx(re_pos);
 
-	     count++;
+	    count++;
 
-	     break;
+	    break;
 
       case 3:
-	     p[count].sx=p[p_pos].sx+sor[re_pos].len;
-	     p[count].sy=p[p_pos].sy;
-	     p[count].parent=re_pos;
-	     p[count].isalive=0;
-	     p[count].avalx=p[p_pos].avalx-sor[re_pos].len;;
-	     p[count].avaly=p[p_pos].avaly;
-	     p[count].which=0;
+	    p[count].sx=p[p_pos].sx+sor[re_pos].len;
+	    p[count].sy=p[p_pos].sy;
+	    p[count].parent=re_pos;
+	    p[count].isalive=0;
+	    p[count].avalx=p[p_pos].avalx-sor[re_pos].len;;
+	    p[count].avaly=p[p_pos].avaly;
+	    p[count].which=0;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checky(re_pos);
+	    checky(re_pos);
 
-	     count++;
+	    count++;
 
-	     p[count].sx=p[p_pos].sx;
-	     p[count].sy=p[p_pos].sy+sor[re_pos].wid;
-	     p[count].parent=re_pos;
-	     p[count].avalx=p[p_pos].avalx;
-	     p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
-	     p[count].isalive=0;
-	     p[count].which=1;
+	    p[count].sx=p[p_pos].sx;
+	    p[count].sy=p[p_pos].sy+sor[re_pos].wid;
+	    p[count].parent=re_pos;
+	    p[count].avalx=p[p_pos].avalx;
+	    p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
+	    p[count].isalive=0;
+	    p[count].which=1;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checkx(re_pos);
+	    checkx(re_pos);
 
-	     count++;
+	    count++;
 
-	     break;
+	    break;
 
       case 4:
-	     p[count].sx=p[p_pos].sx;
-	     p[count].sy=p[p_pos].sy+sor[re_pos].wid;
-	     p[count].parent=re_pos;
-	     p[count].avalx=p[p_pos].avalx;
-	     p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
-	     p[count].isalive=0;
-	     p[count].which=1;
+	    p[count].sx=p[p_pos].sx;
+	    p[count].sy=p[p_pos].sy+sor[re_pos].wid;
+	    p[count].parent=re_pos;
+	    p[count].avalx=p[p_pos].avalx;
+	    p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
+	    p[count].isalive=0;
+	    p[count].which=1;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checkx(re_pos);
+	    checkx(re_pos);
 
-	     count++;
+	    count++;
 
-	     ch(p_pos,re_pos);
+	    ch(p_pos,re_pos);
 
-	     break;
+	    break;
 
       case 5:
-	     for(i=0;i<count;i++)
-	      {
-	       if((p[i].which==2)&&(p[i].sy<=p[p_pos].sy+sor[re_pos].wid)&&(p[i].sy>p[p_pos].sy))
+	    for(i=0;i<count;i++)
+	     {
+	      if((p[i].which==2)&&(p[i].sy<=p[p_pos].sy+sor[re_pos].wid)&&(p[i].sy>p[p_pos].sy))
 		p[i].isalive=1;
-	      }
+	     }
 
-	     p[count].sx=p[p_pos].sx+sor[re_pos].len;
-	     p[count].sy=p[p_pos].sy;
-	     p[count].parent=re_pos;
-	     p[count].isalive=0;
-	     p[count].avalx=p[p_pos].avalx-sor[re_pos].len;;
-	     p[count].avaly=p[p_pos].avaly;
-	     p[count].which=0;
+	    p[count].sx=p[p_pos].sx+sor[re_pos].len;
+	    p[count].sy=p[p_pos].sy;
+	    p[count].parent=re_pos;
+	    p[count].isalive=0;
+	    p[count].avalx=p[p_pos].avalx-sor[re_pos].len;;
+	    p[count].avaly=p[p_pos].avaly;
+	    p[count].which=0;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checky(re_pos);
+	    checky(re_pos);
 
-	     count++;
+	    count++;
 
-	     p[count].sx=p[p_pos].sx;
-	     p[count].sy=p[p_pos].sy+sor[re_pos].wid;
-	     p[count].parent=re_pos;
-	     p[count].avalx=p[p_pos].avalx;
-	     p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
-	     p[count].isalive=0;
-	     p[count].which=2;
+	    p[count].sx=p[p_pos].sx;
+	    p[count].sy=p[p_pos].sy+sor[re_pos].wid;
+	    p[count].parent=re_pos;
+	    p[count].avalx=p[p_pos].avalx;
+	    p[count].avaly=p[p_pos].avaly-sor[re_pos].wid;
+	    p[count].isalive=0;
+	    p[count].which=2;
 
-	     if(p[p_pos].ischeckx==1)
-	      p[count].ischeckx=1;
-	     else
-	      p[count].ischeckx=0;
+	    if(p[p_pos].ischeckx==1)
+	     p[count].ischeckx=1;
+	    else
+	     p[count].ischeckx=0;
 
-	     if(p[p_pos].ischecky==1)
-	      p[count].ischecky=1;
-	     else
-	      p[count].ischecky=0;
+	    if(p[p_pos].ischecky==1)
+	     p[count].ischecky=1;
+	    else
+	     p[count].ischecky=0;
 
-	     checkx(re_pos);
+	    checkx(re_pos);
 
-	     count++;
+	    count++;
 
-	     break;
+	    break;
 
      }
 
@@ -1914,474 +2320,3 @@ void sortper()
 
 		       }
  }
-
-/*====================================================================
-void recta(float,float,float,float);
-Description:Writes a lisp command for rectangular part.
-Input:Bottomleft and topright co-ordinates of rectangle.
-====================================================================*/
-void recta(float x1,float y1,float x2,float y2)
-{
- fprintf(f,"(command \"rectangle\" (list %f %f) (list %f %f))",x1-Lx,y1-Ly,x2-Lx,y2-Ly);
-}
-
-/*====================================================================
-void recta1(int,int,int,int,int)
-Description:Draws rectangles on screen.
-
-Input:Co-ordinates of rectangles and rectangle position.
-====================================================================*/
-void recta1(int x1,int y1,int x2,int y2,int re_pos)
- {
-  char str[10];
-  int x11,y11,x21,y21,Lx1,Ly1;
-
-  Lx1=getmaxx()/2-(scale/2);
-  Ly1=getmaxy()/2-(scale/2);
-
-  x11=Lx1+(x1-Lx)/x_scale;
-  x21=Lx1+(x2-Lx)/x_scale;
-  y11=Ly1+(y1-Ly)/y_scale;
-  y21=Ly1+(y2-Ly)/y_scale;
-
-  setcolor(YELLOW);
-  rectangle(x11,ymax-y11,x21,ymax-y21);
-
-  setcolor(YELLOW);
-  settextstyle(0, HORIZ_DIR, 0);
-
-  sprintf(str," %d",sor[re_pos].number+1);
-  outtextxy(x11+5,ymax-(y11+8),str);
-
-  if(sor[re_pos].rot==1)
-   {
-    settextstyle(0, HORIZ_DIR, 0);
-    outtextxy(x11+2,ymax-y11-9,"R");
-   }
-
- }
-
-
-/*====================================================================
-float place_sort()
-Description:Placement of parts on actual screen.
-
-Returns:Packing height
-====================================================================*/
-float place_sort()
- {
-  int k=0,is,pflag,Lx1,Ly1;
-  float ht=0.0,t;
-  char str[30];
-  char lsp[200];
-
-  x_scale=(float)leng/scale;
-  y_scale=(float)leng/scale;
-  Lx1=getmaxx()/2-(scale/2);
-  Ly1=getmaxy()/2-(scale/2);
-  f=fopen(fname,"w");
-  fprintf(f,"(defun c:go()");
-  setfillstyle(SOLID_FILL,BLUE);
-  bar(Lx1-3,25,Lx1,ymax-Ly1);
-  bar(Lx1-3,ymax-Ly1+3,Lx1+scale+3,ymax-Ly1);
-  bar(Lx1+scale,ymax-Ly1,Lx1+scale+3,25);
-
-  for(is=0;((is<in)&&(sor[is].flag==0));is++)
-	 {
-
-	  if(sor[is].rot==1)
-	    {
-		t=sor[is].len;
-		sor[is].len=sor[is].wid;
-		sor[is].wid=t;
-	    }
-
-	  if(k==-1)
-	    {
-		is--;
-		sprintf(str,"break at %d",is);
-		outtextxy(15,15,str);
-		break;
-	    }
-
-	  k=choosepivot(is);
-
-	  p[k].isalive=1;
-
-	  setcolor(RED);
-
-	  if(sor[is].irr==0)
-		{
-		 recta1(chosen.sx,chosen.sy,chosen.sx+sor[is].len,chosen.sy+sor[is].wid,is);
-		 recta(chosen.sx,chosen.sy,chosen.sx+sor[is].len,chosen.sy+sor[is].wid);
-		}
-
-	  p[k].pfor=is;
-
-	  if(ht<(chosen.sy+sor[is].wid-Ly))
-		 ht=chosen.sy+sor[is].wid-Ly;
-
-	  if(p[k].which==0)
-		{
-		 if(sor[p[k].parent].wid>sor[is].wid)
-		 pflag=0;
-		 if(sor[p[k].parent].wid==sor[is].wid)
-		 pflag=1;
-		 if(sor[p[k].parent].wid<sor[is].wid)
-		 pflag=2;
-		}
-
-	  if(p[k].which==1)
-	   {
-	       if((sor[p[k].parent].len>sor[is].len)||(sor[p[k].parent].len<sor[is].len))
-		pflag=3;
-	       if(sor[p[k].parent].len==sor[is].len)
-		pflag=4;
-	   }
-
-	  if(p[k].which==2)
-	  {
-	    pflag=5;
-
-	  }
-
-	  pivot_status(pflag,k,is);
-
-	  sor[is].flag=1;
-
-	}
-
-   sprintf(lsp,"(command \"rectangle\" (list %d %d) (list %d %d))",0,0,leng,leng);
-   fputs(lsp,f);
-   fprintf(f,"(command \"zoom\" \"e\" )");
-   fputs(")",f);
-   fclose(f);
-
-   return ht;
-
- }
-
-/*====================================================================
-void load()
-Description:Reads input data file for heuristic
-Returns:Flag showing validty of input file.
-====================================================================*/
-int load()
-{
-  int i=0,choice,v_flag;
-  char a[200];
-  char str[200];
-  char *valid="GENPACK1";
-  char valid1[10];
-
-  sprintf(str,"Enter name of input data file:");
-  outtextxy(20,260,str);
-  gotoxy(35,17);
-  scanf("%s",&a);
-
-  infp=fopen(a,"r");
-
-  fscanf(infp,"%s",&valid1);
-  v_flag=strcmp(valid,valid1);
-  if(v_flag!=0)
-   {
-    fclose(infp);
-    outtextxy(20,270,"Invalid Input File Format");
-    printf("\a");
-    getch();
-   }
-  else
-  {
-   fscanf(infp,"%d",&in);
-
-   /*memory allocation*/
-   rr=(struct rect*)malloc(in*sizeof(struct rect));
-   sor=(struct rect*)malloc(in*sizeof(struct rect));
-   arr=(int *)malloc(in*sizeof(int));
-   ar1=(int *)malloc(in*sizeof(int));
-
-   fscanf(infp,"%d",&leng);
-   /*memory allocation for pivots*/
-   p=(struct pivot*)malloc((2*in+1.5*leng)*(sizeof(struct pivot)));
-
-   for(i=0;i<in;i++)
-	{
-			 fscanf(infp,"%f",&rr[i].len);
-			 fscanf(infp,"%f",&rr[i].wid);
-			 rr[i].flag=0;
-			 rr[i].rot=0;
-			 rr[i].irr=0;
-			 rr[i].number=i;
-
-	}
-
-   sprintf(str,"Enter name of lisp file:");
-   outtextxy(20,292,str);
-   gotoxy(35,19);
-   scanf("%s",&fname);
-   fclose(infp);
-   }
-
-  return v_flag;
- }
-
-/*====================================================================
-void sorting()
-Description:Sorting solution output screen.
-====================================================================*/
-void sorting()
-{
-  char str[200];
-  char ch;
-  int i,flag_sort=0;
-  float height1=0.0;
-
-  Lx=(getmaxx()/2)-leng/2;
-  Ly=(getmaxy()/2)-leng/2;
-
-  do
-   {
-    cleardevice();
-    flag_sort=0;
-    ch=sort_menu();
-    if(ch==27)
-     break;
-    cleardevice();
-
-    switch(ch)
-	{
-	 case '1':
-		     sortlen();
-		     sprintf(str,"Solution by Length Sort");
-		     break;
-
-	 case '2':
-		     sortwid();
-		     sprintf(str,"Solution by Width Sort" );
-		     break;
-
-	 case '3':
-		     sortarea();
-		     sprintf(str,"Solution by Area Sort");
-		     break;
-
-	 case '4':
-		     sortper();
-		     sprintf(str,"Solution by Perimeter Sort");
-		     break;
-
-	 default:
-		     sprintf(str,"Invalid Selection");
-		     flag_sort=1;
-		     break;
-
-       }
-
-   if(flag_sort==0)
-     {
-      setbkcolor(LIGHTBLUE);
-
-      setcolor(WHITE);
-      outtextxy(0,10,str);
-      sprintf(str,"Press any key to return to sort menu");
-      outtextxy(0,450,str);
-
-      inplace();
-      height1=place_sort();
-
-      setcolor(YELLOW);
-      sprintf(str," Packing height = %.2f",height1);
-      outtextxy(400,20,str);
-      setcolor(WHITE);
-
-      getch();
-      cleardevice();
-     }
-   }while(ch!=27);
- }
-
-/*====================================================================
-void input()
-Description:Creates Data input file.
-====================================================================*/
-void input()
- {
-  int leng,i,j,in,choice,no_sides;
-  float len,wid;
-  char b[200];
-
-  clrscr();
-
-  printf("Enter file name:");
-  gets(b);
-  fp=fopen(b,"w");
-
-  fprintf(fp,"GENPACK1 ");
-  printf("\nEnter number of items:");
-  scanf("%d",&in);
-  fprintf(fp,"%d ",in);
-
-  printf("\nEnter length of base rectangle:");
-  scanf("%d",&leng);
-  fprintf(fp,"%d ",leng);
-
-  for(i=0;i<in;i++)
-	{
-		  printf("\nEnter length and width of rectangle '%d' :",i+1);
-		  scanf("%f %f",&len,&wid);
-		  fprintf(fp,"%f %f ",len,wid);
-	}
-
- fclose(fp);
-}
-
-
-/*====================================================================
-char sort_menu()
-Description:Shows option screen of heuristic solutions.
-Returns:Selected item number.
-====================================================================*/
-char sort_menu()
- {
-  char str[200];
-  int i;
-
-  setbkcolor(LIGHTBLUE);
-  setcolor(BLUE);
-
-  for(i=0;i<5;i++)
-    rectangle(i,i,getmaxx()-i,getmaxy()-i);
-
-  setcolor(LIGHTGRAY);
-
-  for(i=0;i<5;i++)
-    rectangle(i+5,i+5,(getmaxx()-(i+5)),(getmaxy()-(i+5)));
-
-  setcolor(WHITE);
-  outtextxy(310,40,"GENPACK");
-
-  outtextxy(10,400,"Press esc to Exit");
-  sprintf(str,"1 : Generate Solution by Length Sort.");
-  outtextxy(20,70,str);
-  sprintf(str,"2 : Generate Solution by Width Sort.");
-  outtextxy(20,90,str);
-  sprintf(str,"3 : Generate Solution by Area Sort.");
-  outtextxy(20,110,str);
-  sprintf(str,"4 : Generate Solution by Perimeter Sort.");
-  outtextxy(20,130,str);
-  outtextxy(20,160,"Choose your option:");
-  return getch();
- }
-
-/*====================================================================
-void option_screen()
-Description:Shows option screen.
-====================================================================*/
-void option_screen()
- {
-  char str[200];
-  int i;
-
-  setcolor(BLINK);
-
-  for(i=0;i<5;i++)
-     rectangle(i,i,getmaxx()-i,getmaxy()-i);
-
-  setcolor(LIGHTGRAY);
-
-  for(i=0;i<5;i++)
-    rectangle(i+5,i+5,(getmaxx()-(i+5)),(getmaxy()-(i+5)));
-
-  setcolor(WHITE);
-  outtextxy(310,40,"GENPACK");
-  outtextxy(68,60,"OPTIMAL NESTING OF TWO DIMENSIONAL PARTS USING GENETIC ALGORITHMS");
-  outtextxy(30,400,"Press esc to Exit");
-  sprintf(str,"1 : Create Data file for input.");
-  outtextxy(30,120,str);
-  sprintf(str,"2 : Generate Solution by Heuristic Methods.");
-  outtextxy(30,140,str);
-  sprintf(str,"3 : Generate Solution by Genetic Approach.");
-  outtextxy(30,160,str);
-  outtextxy(30,180,"Choose your option:");
- }
-
-/*====================================================================
-void main()
-Description:Main function.Calls other subroutines.
-====================================================================*/
-void main()
- {
-  int gd=DETECT,gm,choice,i;
-  char ch;
-  char str[200];
-
-  initgraph(&gd,&gm,"");
-  ymax=getmaxy();
-  xmax=getmaxx();
-  ch='26';
-
-  do
-   {
-    setbkcolor(LIGHTBLUE);
-    option_screen();
-    setcolor(WHITE);
-    ch=getch();
-
-    if(ch==27)
-     exit(0);
-
-    flushall();
-
-    switch(ch) {
-
-       case '1':
-		closegraph();
-		input();
-		initgraph(&gd,&gm,"");
-		break;
-
-       case '2':
-		outtextxy(220,180,"2");
-		if(load()==0)
-		 sorting();
-		free(rr);
-		free(sor);
-		free(ar1);
-		free(p);
-		break;
-
-	case '3':
-		 outtextxy(220,180,"3");
-		 tot_crossovers=0;
-		 tot_mutations=0;
-		 genetic();
-		 free(rr);
-		 free(sor);
-		 free(ar1);
-		 free(p);
-		 break;
-
-	default:
-		 setcolor(RED);
-		 sprintf(str,"Invalid Selection");
-		 printf("\a");
-		 outtextxy(40,440,str);
-		 getch();
-
-		}
-
-     setcolor(LIGHTBLUE);
-     sprintf(str,"Invalid Selection");
-     outtextxy(40,400,str);
-
-     cleardevice();
-
-     flushall();
-
-    }while(ch!=27);
-
- getch();
-
- closegraph();
-
-}

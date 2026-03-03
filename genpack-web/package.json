@@ -1,0 +1,17 @@
+{
+  "name": "genpack-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GENPACK web app - React frontend, Node/TypeScript backend",
+  "scripts": {
+    "test": "npm run test -w backend",
+    "test:backend": "npm run test -w backend",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "dev": "npm run dev -w frontend",
+    "dev:backend": "npm run start -w backend"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}

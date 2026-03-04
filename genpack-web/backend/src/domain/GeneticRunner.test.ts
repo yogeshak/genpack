@@ -37,11 +37,15 @@ describe('GeneticRunner', () => {
     );
     const result = runner.run({ includeGenerationReports: true });
     expect(result.generationReports).toBeDefined();
-    expect(result.generationReports!.length).toBe(4); // maxGen-1 generations
+    expect(result.generationReports!.length).toBe(5); // initial (gen 0) + 4 loop generations
     expect(result.generationReports![0]).toMatchObject({
-      generation: 1,
+      generation: 0,
       bestHeight: expect.any(Number),
       bestIndex: expect.any(Number),
+    });
+    expect(result.generationReports![1]).toMatchObject({
+      generation: 1,
+      bestHeight: expect.any(Number),
     });
   });
 });

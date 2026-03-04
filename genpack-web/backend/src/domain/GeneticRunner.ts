@@ -32,19 +32,30 @@ export class GeneticRunner {
       stockWidth,
       rectangles,
       pcross,
-      pmute,
+      pmute, // from run request (frontend Mutation 0–1)
       maxGen,
       populationSize,
       itemCount,
     } = this.input;
 
-    const pop = new Population(populationSize, stockWidth, rectangles, this.rng);
+    const pop = new Population(populationSize, stockWidth, rectangles, this.rng, pmute);
     pop.evaluateAll();
     pop.updateBest();
 
     let bestChromosome = pop.individuals[pop.bestIndex].copy();
     let bestFitness = pop.bestFitness;
     const reports: GenerationReport[] = options?.includeGenerationReports ? [] : undefined!;
+
+    if (reports) {
+      let sumFit = 0;
+      for (const ch of pop.individuals) sumFit += ch.fitness;
+      reports.push({
+        generation: 0,
+        bestHeight: bestFitness,
+        bestIndex: pop.bestIndex,
+        avgFitness: sumFit / pop.individuals.length,
+      });
+    }
 
     for (let gen = 0; gen < maxGen - 1; gen++) {
       const selected = pop.selectTournament(this.rng);
@@ -61,7 +72,7 @@ export class GeneticRunner {
 
       if (reports) {
         let sumFit = 0;
-        for (const ch of pop.individuals) sumFit += 1 / ch.fitness;
+        for (const ch of pop.individuals) sumFit += ch.fitness;
         reports.push({
           generation: gen + 1,
           bestHeight: bestFitness,

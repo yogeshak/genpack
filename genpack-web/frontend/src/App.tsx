@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { RunForm } from './components/RunForm';
 import { ResultSummary } from './components/ResultSummary';
+import { GAEvolutionChart } from './components/GAEvolutionChart';
 import { PackingSvg } from './components/PackingSvg';
 import { CreateDataFile } from './components/CreateDataFile';
 import type { ParseResult, RunResult, PlacedRect } from './types/api';
@@ -10,6 +11,7 @@ function App() {
   const [content, setContent] = useState<string | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [gaEvolutionOpen, setGAEvolutionOpen] = useState(false);
 
   const handleParsed = useCallback((c: string, result: ParseResult) => {
     setContent(c);
@@ -19,6 +21,7 @@ function App() {
 
   const handleResult = useCallback((result: RunResult) => {
     setRunResult(result);
+    setGAEvolutionOpen(false);
   }, []);
 
   const packingSvgRef = useRef<HTMLDivElement>(null);
@@ -142,6 +145,29 @@ function App() {
                 <p className="mt-1 text-sm text-slate-600">
                   Strip width {parseResult.stockWidth}, height {runResult.packingHeight.toFixed(2)}
                 </p>
+                {runResult.generationReports && runResult.generationReports.length > 0 && (
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setGAEvolutionOpen((o) => !o)}
+                      className="flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      aria-expanded={gaEvolutionOpen}
+                    >
+                      <span
+                        className="inline-block transition-transform"
+                        style={{ transform: gaEvolutionOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                      >
+                        ▶
+                      </span>
+                      GA evolution
+                    </button>
+                    {gaEvolutionOpen && (
+                      <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+                        <GAEvolutionChart reports={runResult.generationReports} />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"

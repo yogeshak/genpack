@@ -7,13 +7,13 @@ const Rect_1 = require("./Rect");
 const TOURNAMENT_SIZE = 2;
 const ROTATION_PROB = 0.3;
 /**
- * Build chromosome from order (indices 0..n-1) and random rotations.
+ * Build chromosome from order (indices 0..n-1) and optionally random rotations.
  * Gene = sign * (index + 1), so 1-based: 1..n or -1..-n. Negative = rotate 90°.
- * Using 1-based allows mutation to flip rect 0 (gene 1 ↔ -1); 0-based would make -0 === 0.
+ * When pmute === 0 no rotations are assigned (sign = 1 always); otherwise use ROTATION_PROB.
  */
-function buildChromosome(order, _rectangles, rng) {
+function buildChromosome(order, _rectangles, rng, pmute) {
     const genes = order.map((idx) => {
-        const sign = rng.uniformInt(1000) / 1000 < ROTATION_PROB ? -1 : 1;
+        const sign = pmute > 0 && rng.uniformInt(1000) / 1000 < ROTATION_PROB ? -1 : 1;
         return sign * (idx + 1);
     });
     return new Chromosome_1.Chromosome(genes);
@@ -49,7 +49,7 @@ function randomPermutation(n, rng) {
     return arr;
 }
 class Population {
-    constructor(size, stockWidth, rectangles, rng) {
+    constructor(size, stockWidth, rectangles, rng, pmute) {
         this.rectangles = rectangles;
         this.placer = new BottomLeftPlacer_1.BottomLeftPlacer(stockWidth);
         this.individuals = [];
@@ -75,7 +75,7 @@ class Population {
                     order = randomPermutation(n, rng);
                     break;
             }
-            this.individuals.push(buildChromosome(order, rectangles, rng));
+            this.individuals.push(buildChromosome(order, rectangles, rng, pmute));
         }
     }
     /**

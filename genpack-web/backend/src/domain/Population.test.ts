@@ -11,7 +11,7 @@ describe('Population', () => {
   const rng = seededRng(42);
 
   it('initializes with correct size and first 4 heuristic', () => {
-    const pop = new Population(6, stockWidth, rectangles, rng);
+    const pop = new Population(6, stockWidth, rectangles, rng, 0.1);
     expect(pop.individuals).toHaveLength(6);
     expect(pop.individuals[0].genes).toHaveLength(3);
     pop.evaluateAll();
@@ -19,7 +19,7 @@ describe('Population', () => {
   });
 
   it('updateBest sets bestIndex and bestFitness', () => {
-    const pop = new Population(4, stockWidth, rectangles, rng);
+    const pop = new Population(4, stockWidth, rectangles, rng, 0.1);
     pop.evaluateAll();
     pop.updateBest();
     expect(pop.bestIndex).toBeGreaterThanOrEqual(0);
@@ -29,7 +29,7 @@ describe('Population', () => {
   });
 
   it('selectTournament returns population size chromosomes', () => {
-    const pop = new Population(4, stockWidth, rectangles, rng);
+    const pop = new Population(4, stockWidth, rectangles, rng, 0.1);
     pop.evaluateAll();
     const selected = pop.selectTournament(seededRng(99));
     expect(selected).toHaveLength(4);
@@ -37,7 +37,7 @@ describe('Population', () => {
   });
 
   it('crossover produces valid chromosomes (all indices present)', () => {
-    const pop = new Population(4, stockWidth, rectangles, rng);
+    const pop = new Population(4, stockWidth, rectangles, rng, 0.1);
     pop.evaluateAll();
     const selected = pop.selectTournament(seededRng(99));
     pop.individuals = selected;
@@ -53,11 +53,20 @@ describe('Population', () => {
   });
 
   it('mutate preserves indices, may flip signs', () => {
-    const pop = new Population(2, stockWidth, rectangles, rng);
+    const pop = new Population(2, stockWidth, rectangles, rng, 0.1);
     pop.evaluateAll();
     const before = pop.individuals[0].genes.map((g) => Math.abs(g)).sort((a, b) => a - b);
     pop.mutate(1.0, rng); // always flip
     const after = pop.individuals[0].genes.map((g) => Math.abs(g)).sort((a, b) => a - b);
     expect(after).toEqual(before);
+  });
+
+  it('pmute 0 builds initial population with no rotations (all genes positive)', () => {
+    const pop = new Population(4, stockWidth, rectangles, rng, 0);
+    pop.individuals.forEach((ch) => {
+      ch.genes.forEach((g) => {
+        expect(g).toBeGreaterThan(0);
+      });
+    });
   });
 });

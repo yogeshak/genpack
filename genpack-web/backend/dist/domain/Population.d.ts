@@ -7,7 +7,7 @@ export declare class Population {
     bestFitness: number;
     private readonly placer;
     private readonly rectangles;
-    constructor(size: number, stockWidth: number, rectangles: readonly Rect[], rng: Rng);
+    constructor(size: number, stockWidth: number, rectangles: readonly Rect[], rng: Rng, pmute: number);
     /**
      * Evaluate all chromosomes: run BLF, set fitness = packing height.
      */

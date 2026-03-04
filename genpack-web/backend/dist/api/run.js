@@ -11,20 +11,20 @@ function validateRunBody(body) {
         return { ok: false, status: 400, error: 'Missing or invalid body: expected { content: string, ...params }' };
     }
     const b = body;
-    const pcross = b.pcross ?? PackingInput_1.DEFAULT_PCROSS;
-    const pmute = b.pmute ?? PackingInput_1.DEFAULT_PMUTE;
-    const maxGen = b.maxGen ?? PackingInput_1.DEFAULT_MAX_GEN;
-    const populationSize = b.populationSize ?? PackingInput_1.DEFAULT_POPULATION_SIZE;
-    if (typeof pcross !== 'number' || pcross < 0 || pcross > 1) {
+    const pcross = b.pcross !== undefined && b.pcross !== null ? Number(b.pcross) : PackingInput_1.DEFAULT_PCROSS;
+    const pmute = b.pmute !== undefined && b.pmute !== null ? Number(b.pmute) : PackingInput_1.DEFAULT_PMUTE;
+    const maxGen = b.maxGen !== undefined && b.maxGen !== null ? Number(b.maxGen) : PackingInput_1.DEFAULT_MAX_GEN;
+    const populationSize = b.populationSize !== undefined && b.populationSize !== null ? Number(b.populationSize) : PackingInput_1.DEFAULT_POPULATION_SIZE;
+    if (!Number.isFinite(pcross) || pcross < 0 || pcross > 1) {
         return { ok: false, status: 400, error: 'pcross must be a number in [0, 1]' };
     }
-    if (typeof pmute !== 'number' || pmute < 0 || pmute > 1) {
+    if (!Number.isFinite(pmute) || pmute < 0 || pmute > 1) {
         return { ok: false, status: 400, error: 'pmute must be a number in [0, 1]' };
     }
-    if (typeof maxGen !== 'number' || maxGen < 1) {
+    if (!Number.isFinite(maxGen) || maxGen < 1) {
         return { ok: false, status: 400, error: 'maxGen must be a positive integer' };
     }
-    if (typeof populationSize !== 'number' || populationSize < 4 || populationSize > PackingInput_1.MAX_ITEMS) {
+    if (!Number.isFinite(populationSize) || populationSize < 4 || populationSize > PackingInput_1.MAX_ITEMS) {
         return { ok: false, status: 400, error: `populationSize must be an integer in [4, ${PackingInput_1.MAX_ITEMS}]` };
     }
     return {
@@ -56,7 +56,7 @@ exports.runRouter.post('/', (req, res) => {
     }
     try {
         const runner = new GeneticRunner_1.GeneticRunner(parseResult.input, { seed });
-        const result = runner.run({ includeGenerationReports: false });
+        const result = runner.run({ includeGenerationReports: true });
         res.json(result);
     }
     catch (err) {
